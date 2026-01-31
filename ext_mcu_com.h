@@ -15,7 +15,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-// コンパイルスイッチ
+// [コンパイルスイッチ]
 #define EMC_MODE_MASTER     0x00
 // #define EMC_MODE_SLAVE      0x01
 #if defined(EMC_MODE_MASTER) && defined(EMC_MODE_SLAVE)
@@ -30,30 +30,30 @@ typedef void(*p_func_drv_spi_write)(uint8_t tx_data);
 typedef uint8_t(*p_func_drv_spi_read)(void);
 typedef void(*p_func_delay_ms)(uint32_t ms);
 
-#ifdef EMC_MODE_MASTER
 typedef struct {
+#ifdef EMC_MODE_MASTER
     p_func_drv_spi_cs p_func_cs;       // 呼び元のSPIドライバ CS関数ポインタ
+#endif
     p_func_drv_spi_write p_func_write; // 呼び元のSPIドライバ Write関数ポインタ
     p_func_drv_spi_read p_func_read;   // 呼び元のSPIドライバ Read関数ポインタ
     p_func_delay_ms p_func_delay;      // 呼び元のmsec遅延するdelay関数ポインタ
 } emc_config_t;
 
-typedef struct {
-    uint8_t cmd;
-    uint8_t tx_data;
-    uint8_t rx_data;
-} emc_cmd_frame_t;
-#else
-typedef struct {
-    p_func_drv_spi_read p_func_read;   // 呼び元のSPIドライバ Read関数ポインタ
-    p_func_delay_ms p_func_delay;      // 呼び元のmsec遅延するdelay関数ポインタ
-} emc_config_t;
+#define EMC_READ_CMD     0x00
+#define EMC_WRITE_CMD    0x01
+typedef union {
+    uint8_t byte;
+    struct {
+        uint8_t cmd: 7; // Bit[6:0] ... CMD(7bit)
+        uint8_t rw: 1;  // Bit7     ... R/W(Read: 0, Write: 1)
+    } bit;
+} emc_cmd_t;
 
 typedef struct {
-    uint8_t cmd;
-    uint8_t rx_data;
+    emc_cmd_t cmd;
+    uint8_t *p_tx_data;
+    uint8_t *p_rx_data;
 } emc_cmd_frame_t;
-#endif
 
 bool emc_init(emc_config_t *p_config);
 void emc_cmd_proc(emc_cmd_frame_t *p_flame);
