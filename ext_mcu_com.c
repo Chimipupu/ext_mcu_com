@@ -128,10 +128,10 @@ static void emc_slave_proc(emc_cmd_frame_t *p_flame)
 
 bool emc_init(emc_config_t *p_config)
 {
-    if ((p_config->p_func_read == NULL)   ||
-        (p_config->p_func_write == NULL)  ||
+    if ((p_config->p_func_read == NULL)   &&
+        (p_config->p_func_write == NULL)  &&
 #ifdef EMC_MODE_MASTER
-        (p_config->p_func_cs == NULL)  ||
+        (p_config->p_func_cs == NULL)  &&
 #endif // EMC_MODE_MASTER
         (p_config->p_func_delay == NULL)
     ) {
