@@ -31,6 +31,7 @@ static bool s_is_init_fail = false;
 
 void emc_cmd_config_cbk(uint8_t *p_data, uint32_t data_len)
 {
+    // TOOD
 }
 
 // --------------------------------------------------------------------------
@@ -38,28 +39,31 @@ void emc_cmd_config_cbk(uint8_t *p_data, uint32_t data_len)
 
 bool emc_init(emc_config_t *p_config)
 {
-    bool ret;
-
-    if((p_config->mode > EMC_MODE_SLAVE) ||
-        (p_config->p_func_read == NULL) ||
-        (p_config->p_func_write == NULL) ||
+    if ((p_config->mode > EMC_MODE_SLAVE) ||
+        (p_config->p_func_read == NULL)   ||
+        (p_config->p_func_write == NULL)  ||
         (p_config->p_func_delay == NULL)
-    ){
-        s_emc_confg.mode = EMC_MODE_NONE;
-        ret = false;
-    } else {
-        s_emc_confg.mode         = p_config->mode;
-        s_emc_confg.p_func_read  = p_config->p_func_read;
-        s_emc_confg.p_func_write = p_config->p_func_write;
-        s_emc_confg.p_func_delay = p_config->p_func_delay;
-        ret = true;
+    ) {
+        s_is_init_fail = true;
+        return false;
     }
 
-    s_is_init_fail = ret;
-    return ret;
+    if ((p_config->mode == EMC_MODE_MASTER) && (p_config->p_func_cs != NULL)){
+        s_emc_confg.p_func_cs    = p_config->p_func_cs;
+    } else {
+        s_is_init_fail = true;
+        return false;
+    }
+
+    s_emc_confg.mode         = p_config->mode;
+    s_emc_confg.p_func_read  = p_config->p_func_read;
+    s_emc_confg.p_func_write = p_config->p_func_write;
+    s_emc_confg.p_func_delay = p_config->p_func_delay;
+
+    return true;
 }
 
-void emc_cmd_write(emc_cmd_frame_t *p_flame)
+void emc_cmd_proc(emc_cmd_frame_t *p_flame)
 {
     uint8_t *p_ptr;
     uint32_t i;
@@ -68,29 +72,23 @@ void emc_cmd_write(emc_cmd_frame_t *p_flame)
         return;
     }
 
-    s_emc_confg.p_func_write(p_flame->cmd);
-    p_ptr = p_flame->p_data;
-    for(i = 0; i < p_flame->data_len; i++)
+    switch (s_emc_confg.mode)
     {
-        s_emc_confg.p_func_write(*p_ptr);
-        s_emc_confg.p_func_delay(1);
-    }
-}
+        case EMC_MODE_MASTER:
+            s_emc_confg.p_func_cs(SPI_CS_LOW); // SPI CS = Low
+            s_emc_confg.p_func_write(p_flame->cmd);
+            s_emc_confg.p_func_write(p_flame->tx_data);
+            p_flame->rx_data = s_emc_confg.p_func_read();
+            s_emc_confg.p_func_cs(SPI_CS_HIGH); // SPI CS = High
+            break;
 
-void emc_cmd_read(emc_cmd_frame_t *p_flame)
-{
-    uint8_t *p_ptr;
-    uint32_t i, rx_data_len;
+        case EMC_MODE_SLAVE:
+            p_flame->cmd = s_emc_confg.p_func_read();
+            p_flame->rx_data = s_emc_confg.p_func_read();
+            break;
 
-    if((s_is_init_fail != false) || (s_is_init_fail == 0)) {
-        return;
-    }
-
-    s_emc_confg.p_func_read(p_ptr, &rx_data_len);
-    if((p_ptr != NULL) || (rx_data_len > 1)) {
-        p_flame->cmd = *p_ptr;
-        p_ptr++;
-        p_flame->p_data = p_ptr;
-        p_flame->data_len = (rx_data_len - 1);
+        default:
+            // MOP
+            break;
     }
 }
