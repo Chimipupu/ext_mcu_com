@@ -25,12 +25,15 @@ typedef struct {
     uint32_t data_len;
 } emc_cmd_frame_t;
 
-typedef void(*p_func_drv_spi_write)(emc_cmd_frame_t *p_tx_flame);
-typedef void(*p_func_drv_spi_read)(emc_cmd_frame_t *p_rx_flame);
+typedef void(*p_func_drv_spi_write)(uint8_t tx_data);
+typedef void(*p_func_drv_spi_read)(uint8_t *p_rx_data, uint32_t *p_rx_data_len);
+typedef void(*p_func_delay_ms)(uint32_t ms);
+
 typedef struct {
     uint8_t mode;
     p_func_drv_spi_write p_func_write; // 呼び元のSPIドライバ Write関数ポインタ
     p_func_drv_spi_read p_func_read;   // 呼び元のSPIドライバ Read関数ポインタ
+    p_func_delay_ms p_func_delay;      // 呼び元のmsec遅延するdelay関数ポインタ
 } emc_config_t;
 
 bool emc_init(emc_config_t *p_config);
